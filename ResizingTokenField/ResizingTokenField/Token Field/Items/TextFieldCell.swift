@@ -42,8 +42,11 @@ class TextFieldCell: UICollectionViewCell {
     }
     
     private func setUp() {
-        addSubview(textField)
+        contentView.addSubview(textField)
         
+        if #available(iOS 10.0, *) {
+            textField.adjustsFontForContentSizeCategory = true
+        }
         textField.autocorrectionType = .no
         textField.translatesAutoresizingMaskIntoConstraints = false
         textField.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 0).isActive = true
