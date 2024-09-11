@@ -27,11 +27,22 @@ open class ResizingTokenField: UIView, UICollectionViewDataSource, UICollectionV
             (collectionView.collectionViewLayout as? ResizingTokenFieldFlowLayout)?.sectionInset = contentInsets
         }
     }
+
+     /// iOS 12 has an issue after parent size changed(origin.y)
+    /// Set after parent resizing to parent origin.y
+    public var frameOriginY: CGFloat?
     
     /// Spacing between items in a row.
     public var itemSpacing: CGFloat = Constants.Default.itemSpacing {
         didSet {
             (collectionView.collectionViewLayout as? ResizingTokenFieldFlowLayout)?.minimumInteritemSpacing = itemSpacing
+        }
+    }
+
+    /// Collection view scrolling
+    public var isScrollEnabled = true {
+        didSet {
+            collectionView.isScrollEnabled = isScrollEnabled
         }
     }
     
@@ -125,6 +136,16 @@ open class ResizingTokenField: UIView, UICollectionViewDataSource, UICollectionV
         }
     }
     private var cachedText: String? // If text is set before text field cell is loaded.
+
+    public var keyboardType: UIKeyboardType {
+        get { return viewModel.keyboardType }
+        set { viewModel.keyboardType = newValue }
+    }
+
+    public var autocapitalizationType: UITextAutocapitalizationType {
+        get { return viewModel.autocapitalizationType }
+        set { viewModel.autocapitalizationType = newValue }
+    }
     
     // MARK: Animation
     
@@ -154,7 +175,7 @@ open class ResizingTokenField: UIView, UICollectionViewDataSource, UICollectionV
     // MARK: - Initialization
     
     let viewModel: ResizingTokenFieldViewModel = ResizingTokenFieldViewModel()
-    private let collectionView: UICollectionView = UICollectionView(frame: .zero, collectionViewLayout: ResizingTokenFieldFlowLayout())
+    public let collectionView: UICollectionView = UICollectionView(frame: .zero, collectionViewLayout: ResizingTokenFieldFlowLayout())
     
     /// Tracks when the initial collection view load is performed.
     /// This flag is used to prevent crashes from trying to insert/delete items before the initial load.
@@ -355,6 +376,9 @@ open class ResizingTokenField: UIView, UICollectionViewDataSource, UICollectionV
             }
             completion?(true)
         }
+         if let frameOriginY = frameOriginY {
+            collectionView.frame.origin.y = frameOriginY
+        }
     }
     
     private func removeItems(atIndexPaths indexPaths: [IndexPath], animated: Bool, completion: ((_ finished: Bool) -> Void)?) {
@@ -374,6 +398,9 @@ open class ResizingTokenField: UIView, UICollectionViewDataSource, UICollectionV
                 collectionView.deleteItems(at: indexPaths)
             }
             completion?(true)
+        }
+        if let frameOriginY = frameOriginY {
+            collectionView.frame.origin.y = frameOriginY
         }
     }
     
@@ -496,6 +523,8 @@ open class ResizingTokenField: UIView, UICollectionViewDataSource, UICollectionV
         textFieldCell.textField.enablesReturnKeyAutomatically = preferredTextFieldEnablesReturnKeyAutomatically
         textFieldCell.textField.delegate = textFieldDelegate
         textFieldCell.textField.textColor = textFieldTextColor
+        textFieldCell.textField.keyboardType = viewModel.keyboardType
+        textFieldCell.textField.autocapitalizationType = autocapitalizationType
         textFieldCell.textField.addTarget(self, action: #selector(textFieldEditingChanged(_:)), for: .editingChanged)
         textFieldCell.textField.addTarget(self, action: #selector(textFieldEditingDidBegin(_:)), for: .editingDidBegin)
         textFieldCell.textField.addTarget(self, action: #selector(textFieldEditingDidEnd(_:)), for: .editingDidEnd)
@@ -551,11 +580,20 @@ open class ResizingTokenField: UIView, UICollectionViewDataSource, UICollectionV
         case Constants.Identifier.tokenCell:
             if let token = viewModel.token(atIndexPath: indexPath) {
                 if let delegate = customCellDelegate {
-                    return CGSize(width: delegate.resizingTokenField(self, tokenCellWidthForToken: token),
+                    var width = delegate.resizingTokenField(self, tokenCellWidthForToken: token)
+                    if width > collectionView.frame.size.width {
+                        width = collectionView.frame.size.width - (2 * Constants.Default.defaultTokenLeftRightPadding)
+                    }
+
+                    return CGSize(width: width,
                                   height: itemHeight)
                 }
-                
-                return viewModel.defaultTokenCellSize(forToken: token)
+                var size = viewModel.defaultTokenCellSize(forToken: token)
+                if size.width > collectionView.frame.size.width {
+                    size.width = collectionView.frame.size.width - (2 * Constants.Default.defaultTokenLeftRightPadding)
+                }
+
+                return size
             }
         default:
             break
