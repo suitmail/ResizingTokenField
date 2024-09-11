@@ -49,6 +49,10 @@ class ResizingTokenFieldViewModel {
     var textFieldCellMinSize: CGSize {
         return CGSize(width: textFieldCellMinWidth, height: itemHeight)
     }
+
+    var keyboardType: UIKeyboardType = Constants.Default.keyboardType
+
+    var autocapitalizationType: UITextAutocapitalizationType  = Constants.Default.autocapitalizationType
     
     // MARK: - Collapse/expand tokens
     
